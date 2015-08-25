@@ -1,0 +1,12 @@
+= Classic Flickr Concentration
+A Mobile Card Matching Game using Flickr Images
+
+== License
+
+Apache 2.0
+
+== Build Instructions
+
+. Clone project and open in NetBeans.
+. Make sure you have latest Codename One plugin installed
+. Run the project, or send to Codename One build server to build for iOS, Android, WinPhone, J2ME, or BlackBerry.
