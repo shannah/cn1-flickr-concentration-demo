@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 
@@ -135,10 +136,18 @@ public class ClassicFlickrConcentration {
 
             // Set up the buttons for the card fronts
             // We don't add them to the form yet.
+            Map<String,URLImage> images = new HashMap<String,URLImage>();
+            
             for (String url : shuffledUrls) {
 
                 // Create foreground for card.
-                Button b = new Button(URLImage.createToStorage(cardBack, url+"-"+cardBack.getWidth(), url, URLImage.RESIZE_SCALE_TO_FILL));
+                URLImage urlImg = images.containsKey(url) ? images.get(url) : URLImage.createToStorage(cardBack, url+"-"+cardBack.getWidth(), url, URLImage.RESIZE_SCALE_TO_FILL);
+                if (!images.containsKey(url)) {
+                    images.put(url, urlImg);
+                    urlImg.fetch();
+                }
+                
+                Button b = new Button(urlImg);
                 
                 // Store the index of the url in the button so that we can use it later
                 // to access the corresponding "back" of the button.
