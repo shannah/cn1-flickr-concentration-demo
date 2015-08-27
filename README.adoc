@@ -10,3 +10,16 @@ Apache 2.0
 . Clone project and open in NetBeans.
 . Make sure you have latest Codename One plugin installed
 . Run the project, or send to Codename One build server to build for iOS, Android, WinPhone, J2ME, or BlackBerry.
+
+== View Tutorial
+
+You can view the tutorial portion of the Webinar held August 27, 2015 https://meet32335047.adobeconnect.com/p1p028qhco7/[here].
+
+== Step By Step
+
+I have put together point-form step-by-step progress https://github.com/shannah/cn1-flickr-concentration-demo/wiki/Tutorial[here].
+
+== Contact
+
+. http://www.codenameone.com[Codename One Website]
+. http://sjhannah.com[Steve Hannah]
