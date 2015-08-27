@@ -1,6 +1,8 @@
 = Classic Flickr Concentration
 A Mobile Card Matching Game using Flickr Images
 
+image::https://cloud.githubusercontent.com/assets/2677562/9533129/cffe319e-4cc4-11e5-81d2-3fe46231b3ea.png[]
+
 == License
 
 Apache 2.0
