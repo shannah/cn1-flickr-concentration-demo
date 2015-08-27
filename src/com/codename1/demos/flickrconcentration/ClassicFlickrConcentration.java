@@ -28,15 +28,101 @@ import com.codename1.ui.util.UITimer;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 
 public class ClassicFlickrConcentration {
 
-    private Form current;
+    private Map<String,URLImage> loadedUrls = new HashMap<String, URLImage>();
+    boolean isFlipping = false;
+    
+    public class Card extends Container {
+        private Card match;
+        private Button front;
+        private Button back;
+        private String url;
+        
+        
+        public Card(String url) {
+            this.url = url;
+            URLImage img = null;
+            if (loadedUrls.containsKey(this.url)) {
+                img = loadedUrls.get(this.url);
+            } else {
+                img = URLImage.createToStorage(cardBack, url+"-"+cardBack.getWidth(), url, URLImage.RESIZE_SCALE_TO_FILL);
+                loadedUrls.put(url, img);
+                img.fetch();
+            }
+            setLayout(new BorderLayout());
+            back = new Button(cardBack);
+            back.setUIID("Label");
+            front = new Button(img);
+            front.setUIID("Label");
+            front.addActionListener((evt) -> {
+                flip();
+            });
+            back.addActionListener((evt) -> {
+                flip();
+            });
+            addComponent(BorderLayout.CENTER, back);
+        }
+        
+       
+        
+        
+        
+        public void flip() {
+            if (isFlipping || this.getMatch() != null) {
+                return;
+            }
+            isFlipping = true;
+            boolean isFlipToFront = false;
+            if (this.getComponentAt(0) == front) {
+                // Flip to back
+                this.replaceAndWait(front, back, new FlipTransition());
+            } else {
+                // Flip to front
+                isFlipToFront = true;
+                this.replaceAndWait(back, front, new FlipTransition());
+            }
+            isFlipping = false;
+            
+            if (isFlipToFront) {
+                if (currentCard == null) {
+                    currentCard = this;
+                } else if (currentCard.isMatchFor(this)) {
+                    match = currentCard;
+                    currentCard.match = this;
+                    currentCard = null;
+
+                } else {
+                    currentCard.flip();
+                    this.flip();
+                    currentCard = null;
+                }
+            }
+            
+        }
+        
+        public boolean isMatchFor(Card card) {
+            return card.url.equals(this.url);
+        }
+        
+        public Card getMatch() {
+            return match;
+        }
+        
+        
+        
+        
+    }
+    
     private Resources theme;
     
     // Stores the image for the back of a card
@@ -48,13 +134,20 @@ public class ClassicFlickrConcentration {
     // number of columns in the card grid
     private int cols = 4;
     
-    // Game allows you to flip one card, then a second one to see if it matces
-    // the first.  This is a placeholder for the url of the image in the "first"
-    // card that was flipped.
-    private String currentUrl;
+    // Current card
+    private Card currentCard;
     
-    // Placeholder for the button containing the "first" image that was flipped
-    private Button currentButton;
+    private Card[] createCards(String keyword, int num) {
+        ArrayList<Card> out = new ArrayList<Card>();
+        java.util.List flickrEntries = getEntriesFromFlickrService(keyword);
+        for (int i=0; i<num; i++) {
+            String url = (String)((Map)((Map)flickrEntries.get(i)).get("media")).get("m");
+            out.add(new Card(url));
+            out.add(new Card(url));
+        }
+        Collections.shuffle(out);
+        return out.toArray(new Card[out.size()]);
+    }
 
     public void init(Object context) {
         try {
@@ -93,13 +186,33 @@ public class ClassicFlickrConcentration {
         f.show();
     }
     
+    private Image[] getImagesForSearch(String query, int numImages) {
+        ArrayList<Image> out = new ArrayList<Image>();
+        java.util.List flickrEntries = getEntriesFromFlickrService(query);
+        for (int i=0; i<numImages; i++) {
+            String url = (String)((Map)((Map)flickrEntries.get(i)).get("media")).get("m");
+            URLImage urlImg = URLImage.createToStorage(cardBack, url+"-"+cardBack.getWidth(), url, URLImage.RESIZE_SCALE_TO_FILL);
+            urlImg.fetch();
+            out.add(urlImg);
+        }
+        
+        for (int i=0; i<numImages; i++) {
+            out.add(out.get(i));
+        }
+        return out.toArray(new Image[out.size()]);
+    }
+    
+    
+    
     /**
      * Shows the game board.
      * @param search A search term sent to Flickr to get images to use for 
      * match cards.
      */
     public void showBoard(String search) {
-        
+        // Clear image cache
+        loadedUrls.clear();
+        currentCard = null;
         // May take a while to load images from flickr... show infinite progress
         // while that happens.
         Dialog progress = new InfiniteProgress().showInifiniteBlocking();
@@ -109,138 +222,11 @@ public class ClassicFlickrConcentration {
         
         // We will use GridLayout to show the cards
         grid.setLayout(new GridLayout(rows, cols));
-        
-        // Buttons to hold the "front" of the cards
-        Button[] buttons = new Button[rows*cols];
-        
-        // Buttons to hold the "back" of the cards.
-        Button[] backs = new Button[rows*cols];
-        int index = 0;
-        
         try {
-            
-            // Load images from flickr
-            java.util.List flickrEntries = getEntriesFromFlickrService(search);
-            String[] urls = new String[rows*cols];
-            
-            // We need half as many images as slots.. since we need pairs for matching
-            for (int i=0; i<urls.length/2; i++) {
-                urls[i] = (String)((Map)((Map)flickrEntries.get(i)).get("media")).get("m");
-                urls[urls.length/2+i] = urls[i];
+            for (Card card : createCards(search, rows * cols / 2)) {
+                grid.addComponent(card);
             }
-
-            
-            // Shuffle the urls for random placement of images in grid.
-            java.util.List<String> shuffledUrls = Arrays.asList(urls);
-            Collections.shuffle(shuffledUrls);
-
-            // Set up the buttons for the card fronts
-            // We don't add them to the form yet.
-            Map<String,URLImage> images = new HashMap<String,URLImage>();
-            
-            for (String url : shuffledUrls) {
-
-                // Create foreground for card.
-                URLImage urlImg = images.containsKey(url) ? images.get(url) : URLImage.createToStorage(cardBack, url+"-"+cardBack.getWidth(), url, URLImage.RESIZE_SCALE_TO_FILL);
-                if (!images.containsKey(url)) {
-                    images.put(url, urlImg);
-                    urlImg.fetch();
-                }
-                
-                Button b = new Button(urlImg);
-                
-                // Store the index of the url in the button so that we can use it later
-                // to access the corresponding "back" of the button.
-                b.putClientProperty("index", index);
-                
-                // Store the url of the image for comparison when doing matches
-                b.putClientProperty("url", url);
-
-                // We set the button to  use Label UIID to get rid of button 
-                // borders
-                b.setUIID("Label");
-                
-                b.addActionListener((evt) -> {
-                    if (b.getClientProperty("match") != null) {
-                        return; // already matched... don't flip.
-                    }
-                    
-                    // Flip the card around to show the back
-                    grid.replaceAndWait(b, backs[(int)b.getClientProperty("index")], new FlipTransition());
-                });
-                buttons[index++] = b;
-            }
-
-
-            // Create the buttons for the card backs
-            index = 0;
-            for (int i=0; i<rows; i++) {
-                for (int j=0; j<cols; j++) {
-                    Button l = new Button(cardBack);
-
-                    Button front = buttons[index++];
-                    
-                    // Store the corresponding button for the front of the card
-                    l.putClientProperty("front", front);
-                    l.setUIID("Label");
-                    grid.addComponent(l);
-                    l.addActionListener((e) -> {
-                        FlipTransition t = new FlipTransition();
-                        // Flip card around to show the front of card.
-                        grid.replaceAndWait(l, front, t);
-
-                        if (currentUrl == null) {
-                            // No card is currently flipped awaiting match so 
-                            // set this card as the "current" card.
-                            currentUrl = (String)front.getClientProperty("url");
-                            currentButton = front;
-                        } else {
-                            
-                            // This is the second card flipped.. need to compare
-                            // to the "current" card
-                            if (currentUrl.equals(front.getClientProperty("url"))) {
-                                // We have a match.
-                                
-                                // Add the "match" property which is used in the 
-                                // front button action listener to tell it to 
-                                // not flip the card back around.
-                                front.putClientProperty("match", true);
-                                currentButton.putClientProperty("match", true);
-                                front.getStyle().setBorder(Border.createLineBorder(2));
-                                currentButton.getStyle().setBorder(Border.createLineBorder(2));
-
-                            } else {
-                                
-                                // Show the card for a second then flip back 
-                                // to show the backs of the two cards again
-                                // because they don't match.
-                                Button currButton = currentButton;
-                                UITimer timer = new UITimer(() -> {
-                                    grid.replace(front, l, new FlipTransition());
-                                    grid.replace(currButton, (Component)backs[(int)currButton.getClientProperty("index")], new FlipTransition());
-
-                                });
-
-                                timer.schedule(1000, false, f);
-                            }
-
-                            
-                            // Clear the currentButton and currentUrl flags
-                            // since we don't have a match... the next 
-                            // card tapped should be treated as first card.
-                            currentButton = null;
-                            currentUrl = null;
-                        }
-
-
-                    });
-                    
-                    // Add button to the "backs" array so corresponding front
-                    // button can easily find its back.
-                    backs[index-1] = l;
-                }
-            }
-
+        
             f.setLayout(new BorderLayout());
             f.addComponent(BorderLayout.CENTER, grid);
 
@@ -259,7 +245,7 @@ public class ClassicFlickrConcentration {
     
 
     public void stop() {
-        current = Display.getInstance().getCurrent();
+        
     }
     
     public void destroy() {
