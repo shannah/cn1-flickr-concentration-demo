@@ -15,6 +15,14 @@ Apache 2.0
 
 You can view the tutorial portion of the Webinar held August 27, 2015 https://meet32335047.adobeconnect.com/p1p028qhco7/[here].
 
+== Screencast Demo
+
+View a 1 minute screencast demo of the finished game on youtube: https://youtu.be/6bsPfXpBd1c
+
+== Download APK
+
+Download an APK to install on an Android device https://github.com/shannah/cn1-flickr-concentration-demo/releases/tag/1.0[here].
+
 == Step By Step
 
 I have put together point-form step-by-step progress https://github.com/shannah/cn1-flickr-concentration-demo/wiki/Tutorial[here].
